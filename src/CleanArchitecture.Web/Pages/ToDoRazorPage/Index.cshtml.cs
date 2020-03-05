@@ -1,5 +1,5 @@
 ﻿using CleanArchitecture.Core.Entities;
-using CleanArchitecture.Core.Interfaces;
+using CleanArchitecture.SharedKernel.Interfaces;
 using Microsoft.AspNetCore.Mvc.RazorPages;
 using System.Collections.Generic;
 
@@ -7,18 +7,18 @@ namespace CleanArchitecture.Web.Pages.ToDoRazorPage
 {
     public class IndexModel : PageModel
     {
-        private readonly IRepository<ToDoItem> _todoRepository;
+        private readonly IRepository _repository;
 
         public List<ToDoItem> ToDoItems { get; set; }
 
-        public IndexModel(IRepository<ToDoItem> todoRepository)
+        public IndexModel(IRepository repository)
         {
-            _todoRepository = todoRepository;
+            _repository = repository;
         }
 
         public void OnGet()
         {
-            ToDoItems = _todoRepository.List();
+            ToDoItems = _repository.List<ToDoItem>();
         }
     }
 }

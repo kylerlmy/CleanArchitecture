@@ -1,28 +1,31 @@
 ﻿using CleanArchitecture.Core;
 using CleanArchitecture.Core.Entities;
-using CleanArchitecture.Core.Interfaces;
+using CleanArchitecture.SharedKernel.Interfaces;
+using CleanArchitecture.Web.ApiModels;
 using Microsoft.AspNetCore.Mvc;
+using System.Linq;
 
 namespace CleanArchitecture.Web.Controllers
 {
     public class ToDoController : Controller
     {
-        private readonly IRepository<ToDoItem> _todoRepository;
+        private readonly IRepository _repository;
 
-        public ToDoController(IRepository<ToDoItem> todoRepository)
+        public ToDoController(IRepository repository)
         {
-            _todoRepository = todoRepository;
+            _repository = repository;
         }
 
         public IActionResult Index()
         {
-            var items = _todoRepository.List();
+            var items = _repository.List<ToDoItem>()
+                            .Select(ToDoItemDTO.FromToDoItem);
             return View(items);
         }
 
         public IActionResult Populate()
         {
-            int recordsAdded = DatabasePopulator.PopulateDatabase(_todoRepository);
+            int recordsAdded = DatabasePopulator.PopulateDatabase(_repository);
             return Ok(recordsAdded);
         }
     }

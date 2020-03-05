@@ -1,13 +1,13 @@
 ﻿using CleanArchitecture.Core.Events;
-using CleanArchitecture.Core.SharedKernel;
+using CleanArchitecture.SharedKernel;
 
 namespace CleanArchitecture.Core.Entities
 {
     public class ToDoItem : BaseEntity
     {
-        public string Title { get; set; } 
+        public string Title { get; set; } = string.Empty;
         public string Description { get; set; }
-        public bool IsDone { get; private set; } = false;
+        public bool IsDone { get; private set; }
 
         public void MarkComplete()
         {

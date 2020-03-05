@@ -1,8 +1,11 @@
-﻿using System;
+﻿using Autofac;
+using CleanArchitecture.SharedKernel.Interfaces;
+using CleanArchitecture.SharedKernel;
+using System;
+using System.Collections;
+using System.Collections.Generic;
 using System.Linq;
-using StructureMap;
-using CleanArchitecture.Core.Interfaces;
-using CleanArchitecture.Core.SharedKernel;
+using System.Threading.Tasks;
 
 namespace CleanArchitecture.Infrastructure.DomainEvents
 {
@@ -10,34 +13,40 @@ namespace CleanArchitecture.Infrastructure.DomainEvents
     // http://lostechies.com/jimmybogard/2014/05/13/a-better-domain-events-pattern/
     public class DomainEventDispatcher : IDomainEventDispatcher
     {
-        private readonly IContainer _container;
+        private readonly IComponentContext _container;
 
-        public DomainEventDispatcher(IContainer container)
+        public DomainEventDispatcher(IComponentContext container)
         {
             _container = container;
         }
 
-        public void Dispatch(BaseDomainEvent domainEvent)
+        public async Task Dispatch(BaseDomainEvent domainEvent)
         {
-            var handlerType = typeof(IHandle<>).MakeGenericType(domainEvent.GetType());
-            var wrapperType = typeof(DomainEventHandler<>).MakeGenericType(domainEvent.GetType());
-            var handlers = _container.GetAllInstances(handlerType);
-            var wrappedHandlers = handlers
-                .Cast<object>()
-                .Select(handler => (DomainEventHandler)Activator.CreateInstance(wrapperType, handler));
+            var wrappedHandlers = GetWrappedHandlers(domainEvent);
 
-            foreach (var handler in wrappedHandlers)
+            foreach (DomainEventHandler handler in wrappedHandlers)
             {
-                handler.Handle(domainEvent);
+                await handler.Handle(domainEvent).ConfigureAwait(false);
             }
         }
 
-        private abstract class DomainEventHandler
+        public IEnumerable<DomainEventHandler> GetWrappedHandlers(BaseDomainEvent domainEvent)
         {
-            public abstract void Handle(BaseDomainEvent domainEvent);
+            Type handlerType = typeof(IHandle<>).MakeGenericType(domainEvent.GetType());
+            Type wrapperType = typeof(DomainEventHandler<>).MakeGenericType(domainEvent.GetType());
+            IEnumerable handlers = (IEnumerable)_container.Resolve(typeof(IEnumerable<>).MakeGenericType(handlerType));
+            IEnumerable<DomainEventHandler> wrappedHandlers = handlers.Cast<object>()
+                .Select(handler => (DomainEventHandler)Activator.CreateInstance(wrapperType, handler));
+
+            return wrappedHandlers;
         }
 
-        private class DomainEventHandler<T> : DomainEventHandler
+        public abstract class DomainEventHandler
+        {
+            public abstract Task Handle(BaseDomainEvent domainEvent);
+        }
+
+        public class DomainEventHandler<T> : DomainEventHandler
             where T : BaseDomainEvent
         {
             private readonly IHandle<T> _handler;
@@ -47,9 +56,9 @@ namespace CleanArchitecture.Infrastructure.DomainEvents
                 _handler = handler;
             }
 
-            public override void Handle(BaseDomainEvent domainEvent)
+            public override Task Handle(BaseDomainEvent domainEvent)
             {
-                _handler.Handle((T)domainEvent);
+                return _handler.Handle((T)domainEvent);
             }
         }
     }
